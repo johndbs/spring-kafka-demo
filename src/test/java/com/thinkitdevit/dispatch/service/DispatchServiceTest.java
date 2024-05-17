@@ -22,7 +22,7 @@ class DispatchServiceTest {
 
     @Test
     void process() {
-        String randomUUID = UUID.randomUUID().toString();
+        UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
         dispatchService.process(payload);
     }

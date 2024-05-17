@@ -25,7 +25,7 @@ class OrderCreatedHandlerTest {
 
     @Test
     void listen() {
-        String randomUUID = UUID.randomUUID().toString();
+        UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
         orderCreatedHandler.listen(payload);
         verify(dispatchService, times(1)).process(payload);
