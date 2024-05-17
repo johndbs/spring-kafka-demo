@@ -24,10 +24,21 @@ class OrderCreatedHandlerTest {
     }
 
     @Test
-    void listen() {
+    void listen_Success() {
         UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
         orderCreatedHandler.listen(payload);
         verify(dispatchService, times(1)).process(payload);
     }
+
+
+    @Test
+    void listen_Error() {
+        UUID randomUUID = UUID.randomUUID();
+        OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
+        doThrow(new RuntimeException("Error")).when(dispatchService).process(payload);
+        orderCreatedHandler.listen(payload);
+        verify(dispatchService, times(1)).process(payload);
+    }
+
 }
