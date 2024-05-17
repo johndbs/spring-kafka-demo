@@ -20,4 +20,13 @@ Send a message to the topic with the following command:
 ```bash
 kafka-console-producer.bat --bootstrap-server localhost:9092 --topic order-created
 ```
+Message example:
+```json
+{"orderId": "f6ade72d-d6d2-4bbb-8543-08a35b830884", "item":"item-1"}
+```
 
+Read messages from the topic with the OrderCreatedHandlerTest or the following command:
+
+```bash
+kafka-console-consumer.bat --bootstrap-server localhost:9092 --topic order-created --group dispatch
+```
