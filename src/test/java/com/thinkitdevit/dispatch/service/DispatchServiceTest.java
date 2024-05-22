@@ -6,10 +6,7 @@ import com.thinkitdevit.dispatch.message.OrderDispatched;
 import com.thinkitdevit.dispatch.utils.TestEventData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.util.UUID;
@@ -38,25 +35,26 @@ class DispatchServiceTest {
         when(kafkaProducer.send(Mockito.anyString(), Mockito.any(DispatchPreparing.class))).thenReturn(mock(CompletableFuture.class));
         when(kafkaProducer.send(Mockito.anyString(), Mockito.any(OrderDispatched.class))).thenReturn(mock(CompletableFuture.class));
 
+        String key = UUID.randomUUID().toString();
         UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
-        dispatchService.process(payload);
+        dispatchService.process(key, payload);
 
-        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), any(DispatchPreparing.class));
-        verify(kafkaProducer, times(1)).send(eq("order.dispatched"), any(OrderDispatched.class));
+        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), eq(key), any(DispatchPreparing.class));
+        verify(kafkaProducer, times(1)).send(eq("order.dispatched"),eq(key),  any(OrderDispatched.class));
     }
 
     @Test
     void process_DispatchThrackingThrowsException() {
+        String key = UUID.randomUUID().toString();
         UUID randomUUID = UUID.randomUUID();
-
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
 
-        doThrow(new RuntimeException("dispatch.tracking failed")).when(kafkaProducer).send(eq("dispatch.tracking"), any(DispatchPreparing.class));
+        doThrow(new RuntimeException("dispatch.tracking failed")).when(kafkaProducer).send(eq("dispatch.tracking"),eq(key), any(DispatchPreparing.class));
 
-        Exception exceptionThrown = assertThrows(RuntimeException.class, () -> dispatchService.process(payload));
+        Exception exceptionThrown = assertThrows(RuntimeException.class, () -> dispatchService.process(key, payload));
 
-        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), Mockito.any());
+        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), eq(key), Mockito.any());
         assertThat(exceptionThrown.getMessage()).isEqualTo("dispatch.tracking failed");
     }
 
@@ -64,17 +62,18 @@ class DispatchServiceTest {
     @Test
     void process_OrderCreatedThrowsException() {
         UUID randomUUID = UUID.randomUUID();
+        String key = UUID.randomUUID().toString();
 
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
 
         when(kafkaProducer.send(eq("dispatch.tracking"), any(DispatchPreparing.class))).thenReturn(mock(CompletableFuture.class));
 
-        doThrow(new RuntimeException("order.dispatched failed")).when(kafkaProducer).send(eq("order.dispatched"), any(OrderDispatched.class));
+        doThrow(new RuntimeException("order.dispatched failed")).when(kafkaProducer).send(eq("order.dispatched"), eq(key), any(OrderDispatched.class));
 
-        Exception exceptionThrown = assertThrows(RuntimeException.class, () -> dispatchService.process(payload));
+        Exception exceptionThrown = assertThrows(RuntimeException.class, () -> dispatchService.process(key, payload));
 
-        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), Mockito.any());
-        verify(kafkaProducer, times(1)).send(eq("order.dispatched"), Mockito.any());
+        verify(kafkaProducer, times(1)).send(eq("dispatch.tracking"), eq(key), Mockito.any());
+        verify(kafkaProducer, times(1)).send(eq("order.dispatched"), eq(key),  Mockito.any());
         assertThat(exceptionThrown.getMessage()).isEqualTo("order.dispatched failed");
     }
 

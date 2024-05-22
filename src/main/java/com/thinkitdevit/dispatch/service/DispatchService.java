@@ -16,19 +16,19 @@ public class DispatchService {
 
     private final KafkaTemplate<String, Object> kafkaProducer;
 
-    public void process(OrderCreated orderCreated){
+    public void process(String key, OrderCreated orderCreated){
 
         DispatchPreparing dispatchPreparing = DispatchPreparing.builder()
                 .orderId(orderCreated.getOrderId())
                 .build();
 
-        kafkaProducer.send(DISPATCH_TRACKING, dispatchPreparing);
+        kafkaProducer.send(DISPATCH_TRACKING, key, dispatchPreparing);
 
         OrderDispatched orderDispatched = OrderDispatched.builder()
                 .orderId(orderCreated.getOrderId())
                 .build();
 
-        kafkaProducer.send(ORDER_DISPATCHED_TOPIC, orderDispatched);
+        kafkaProducer.send(ORDER_DISPATCHED_TOPIC, key, orderDispatched);
     }
 
 }

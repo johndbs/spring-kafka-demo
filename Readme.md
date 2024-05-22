@@ -25,6 +25,16 @@ Message example:
 {"orderId": "f6ade72d-d6d2-4bbb-8543-08a35b830884", "item":"item-1"}
 ```
 
+Send a keyed message to the topic with the following command:
+
+```bash
+kafka-console-producer.bat --bootstrap-server localhost:9092 --topic order-created --property parse.key=true --property key.separator=:
+```
+Message example:
+```json
+"1234":{"orderId": "f6ade72d-d6d2-4bbb-8543-08a35b830884", "item":"item-1"}
+```
+
 Read messages from the topic with the OrderCreatedHandlerTest or the following command:
 
 ```bash

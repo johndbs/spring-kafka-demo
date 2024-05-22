@@ -18,6 +18,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -28,6 +30,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.ArgumentMatchers.eq;
 
 @Slf4j
 @SpringBootTest(classes = {DispatchConfiguration.class})
@@ -64,15 +68,18 @@ public class OrderDispatchIntegrationTest {
 
         @KafkaListener(topics = DISPATCH_TRACKING,
                 groupId = "kafkaTest")
-        void listenDispatchPreparing(DispatchPreparing payload){
-            log.info("Received message: {}", payload);
+        void listenDispatchPreparing(
+                @Header(KafkaHeaders.RECEIVED_KEY) String key,
+                @Payload DispatchPreparing payload){
+            log.info("Received message - key: {} - payload: {}", key ,payload);
             dispatchPreparingCount.incrementAndGet();
         }
 
         @KafkaListener(topics = ORDER_DISPATCHED_TOPIC,
                 groupId = "kafkaTest" )
-        void listenOrderDispatched(OrderDispatched payload){
-            log.info("Received message: {}", payload);
+        void listenOrderDispatched( @Header(KafkaHeaders.RECEIVED_KEY) String key,
+                                    @Payload OrderDispatched payload){
+            log.info("Received message - key: {} - payload: {}", key ,payload);
             orderDispatchedCount.incrementAndGet();
         }
 
@@ -96,19 +103,21 @@ public class OrderDispatchIntegrationTest {
                 .orderId(orderId)
                 .item("item")
                 .build();
+        String key = orderId.toString();
 
-        sendMessage(ORDER_CREATED_TOPIC, orderCreated);
+        sendMessage(ORDER_CREATED_TOPIC, key, orderCreated);
 
         await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
-                .until(kafkaListener.dispatchPreparingCount::get, count -> count == 1);
+                .until(kafkaListener.dispatchPreparingCount::get, equalTo(1));
         await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
-                .until(kafkaListener.orderDispatchedCount::get, count -> count == 1);
+                .until(kafkaListener.orderDispatchedCount::get, equalTo(1));
 
     }
 
-    private void sendMessage(String topic, Object payload) throws ExecutionException, InterruptedException {
+    private void sendMessage(String topic, String key, Object payload) throws ExecutionException, InterruptedException {
         kafkaTemplate.send(
                 MessageBuilder.withPayload(payload)
+                        .setHeader(KafkaHeaders.KEY, key)
                         .setHeader(KafkaHeaders.TOPIC, topic)
                         .build()
         ).get();

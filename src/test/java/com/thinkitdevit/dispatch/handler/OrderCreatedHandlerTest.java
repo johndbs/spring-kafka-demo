@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class OrderCreatedHandlerTest {
@@ -25,20 +24,22 @@ class OrderCreatedHandlerTest {
 
     @Test
     void listen_Success() {
+        String key = UUID.randomUUID().toString();
         UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
-        orderCreatedHandler.listen(payload);
-        verify(dispatchService, times(1)).process(payload);
+        orderCreatedHandler.listen(0, key, payload);
+        verify(dispatchService, times(1)).process(key, payload);
     }
 
 
     @Test
     void listen_Error() {
+        String key = UUID.randomUUID().toString();
         UUID randomUUID = UUID.randomUUID();
         OrderCreated payload = TestEventData.buildOrderCreated(randomUUID, "item" + randomUUID);
-        doThrow(new RuntimeException("Error")).when(dispatchService).process(payload);
-        orderCreatedHandler.listen(payload);
-        verify(dispatchService, times(1)).process(payload);
+        doThrow(new RuntimeException("Error")).when(dispatchService).process(key, payload);
+        orderCreatedHandler.listen(0, key, payload);
+        verify(dispatchService, times(1)).process(key, payload);
     }
 
 }
