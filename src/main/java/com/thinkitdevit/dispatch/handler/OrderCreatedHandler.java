@@ -1,5 +1,7 @@
 package com.thinkitdevit.dispatch.handler;
 
+import com.thinkitdevit.dispatch.exception.NotRetryableException;
+import com.thinkitdevit.dispatch.exception.RetryableException;
 import com.thinkitdevit.dispatch.message.OrderCreated;
 import com.thinkitdevit.dispatch.service.DispatchService;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +30,12 @@ public class OrderCreatedHandler {
         log.info("Received message partition: {} - key: {} - payload: {}", partition, key ,payload);
         try{
             dispatchService.process(key, payload);
+        }catch (RetryableException e){
+            log.warn("Retryable exception", e);
+            throw e;
         }catch (Exception e){
             log.error("Error processing message", e);
+            throw new NotRetryableException(e);
         }
     }
-
 }

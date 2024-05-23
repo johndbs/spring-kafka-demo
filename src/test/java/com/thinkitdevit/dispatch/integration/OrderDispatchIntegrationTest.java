@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -33,11 +34,14 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.eq;
 
+import static com.github.tomakehurst.wiremock.stubbing.Scenario.STARTED;
+
 @Slf4j
 @SpringBootTest(classes = {DispatchConfiguration.class})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @ActiveProfiles("test")
 @EmbeddedKafka(controlledShutdown = true)
+@AutoConfigureWireMock(port = 0)
 public class OrderDispatchIntegrationTest {
 
     private final static String ORDER_CREATED_TOPIC = "order-created";
@@ -90,6 +94,8 @@ public class OrderDispatchIntegrationTest {
         kafkaListener.dispatchPreparingCount.set(0);
         kafkaListener.orderDispatchedCount.set(0);
 
+        WiremockUtils.reset();
+
         registry.getListenerContainers().stream()
                 .forEach(container -> {
                     ContainerTestUtils.waitForAssignment(container, embeddedKafkaBroker.getPartitionsPerTopic());
@@ -98,6 +104,51 @@ public class OrderDispatchIntegrationTest {
 
     @Test
     public void testOrderDispatchFlow() throws ExecutionException, InterruptedException {
+
+        WiremockUtils.stubWiremock("/api/stock?item=item", 200, "true");
+
+        UUID orderId = UUID.randomUUID();
+        OrderCreated orderCreated = OrderCreated.builder()
+                .orderId(orderId)
+                .item("item")
+                .build();
+        String key = orderId.toString();
+
+        sendMessage(ORDER_CREATED_TOPIC, key, orderCreated);
+
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(kafkaListener.dispatchPreparingCount::get, equalTo(1));
+        await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(kafkaListener.orderDispatchedCount::get, equalTo(1));
+
+    }
+
+    @Test
+    public void testOrderDispatchFlow_NotRetryableException() throws ExecutionException, InterruptedException {
+
+        WiremockUtils.stubWiremock("/api/stock?item=item", 400, "Bad request");
+
+        UUID orderId = UUID.randomUUID();
+        OrderCreated orderCreated = OrderCreated.builder()
+                .orderId(orderId)
+                .item("item")
+                .build();
+        String key = orderId.toString();
+
+        sendMessage(ORDER_CREATED_TOPIC, key, orderCreated);
+
+        await().atMost(3, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(kafkaListener.dispatchPreparingCount::get, equalTo(0));
+        await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
+                .until(kafkaListener.orderDispatchedCount::get, equalTo(0));
+
+    }
+
+    @Test
+    public void testOrderDispatchFlow_RetryableException() throws ExecutionException, InterruptedException {
+        WiremockUtils.stubWiremock("/api/stock?item=item", 503, "Service unavailable", "failOnce", STARTED, "succedNextTime");
+        WiremockUtils.stubWiremock("/api/stock?item=item", 200, "true", "failOnce", "succedNextTime", "succedNextTime");
+
         UUID orderId = UUID.randomUUID();
         OrderCreated orderCreated = OrderCreated.builder()
                 .orderId(orderId)

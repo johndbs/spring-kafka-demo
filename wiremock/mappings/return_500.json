@@ -1,0 +1,10 @@
+{
+    "priority": 1,
+    "request": {
+        "method": "GET",
+        "urlPattern": "/api/stock\\?item=.*-500"
+    },
+    "response": {
+        "status": 500
+    }
+}
