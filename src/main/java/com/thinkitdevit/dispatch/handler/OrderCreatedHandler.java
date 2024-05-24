@@ -20,7 +20,7 @@ public class OrderCreatedHandler {
     private final DispatchService dispatchService;
 
     @KafkaListener(id="orderConsumerClient",
-            topics = "order-created",
+            topics = "order.created",
             groupId = "dispatch",
             containerFactory = "kafkaListenerContainerFactory" )
     public void listen(
